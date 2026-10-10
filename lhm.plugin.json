@@ -1,0 +1,927 @@
+{
+  "identifier": "sprite-ai",
+  "name": "Sprite AI",
+  "version": "1.0.0",
+  "author": "Sprite AI",
+  "authorUrl": "https://github.com/sprite-ai-art",
+  "homepage": "https://www.sprite-ai.art/mcp",
+  "cloudEndpoint": "https://www.sprite-ai.art/api/mcp",
+  "icon": "https://www.sprite-ai.art/apple-touch-icon.png",
+  "description": "Generate pixel art game sprites from your AI agent. Animate them into sprite sheets, rotate them to 8 directions, restyle them, make normal maps, remove backgrounds and build palettes. Hosted Streamable HTTP server, needs a Sprite AI API key. New accounts get 15 free tokens.",
+  "tags": [
+    "pixel-art",
+    "sprites",
+    "game-development",
+    "game-assets",
+    "sprite-sheet",
+    "animation",
+    "image-generation"
+  ],
+  "tools": [
+    {
+      "name": "sprite_generate",
+      "title": "Generate sprite",
+      "description": "Generate a single static pixel-art sprite (character, prop, tile, item, creature, weapon, vehicle, UI, or effect) from a text prompt. Returns the PNG inline: an image you can see, plus the base64 to save as a file in the game project. Synchronous — the sprite comes back in seconds. For animated / walk-cycle sprites use sprite_generate_animation instead. Costs 1 token at every asset type and size.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 1500,
+            "description": "What to draw, e.g. 'a green slime with a happy face, side view'. ENGLISH, whatever language the user writes in: the generators read English and draw a French or Spanish prompt worse. Translate the subject; your own words to the user stay in their language."
+          },
+          "asset_type": {
+            "type": "string",
+            "enum": [
+              "character",
+              "creature",
+              "prop",
+              "weapon",
+              "vehicle",
+              "tile",
+              "background",
+              "ui",
+              "effect"
+            ],
+            "description": "Drives art style. Inferred from the prompt if omitted. Guide: character/creature = beings; prop = in-world objects and item pickups; weapon; vehicle; tile = repeating map tiles; background = scenery; ui = HUD/menu icons and buttons; effect = particles/FX. Every asset type costs 1 token."
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 32,
+            "maximum": 400,
+            "description": "Pixel width, 32-400. Default 64. If you plan to animate this sprite, keep width and height at 256 or below (the animation source limit)."
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 32,
+            "maximum": 400,
+            "description": "Pixel height, 32-400. Default 64. Keep at 256 or below if you will animate this sprite."
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "south",
+              "south-west",
+              "west",
+              "north-west",
+              "north",
+              "north-east",
+              "east",
+              "south-east"
+            ],
+            "description": "Facing direction for directional sprites (characters/creatures/vehicles)."
+          },
+          "camera_perspective": {
+            "type": "string",
+            "enum": [
+              "front",
+              "side",
+              "top_down",
+              "three_quarter",
+              "isometric"
+            ],
+            "description": "Camera angle. Use top_down or isometric for map tiles. Never top_down or isometric together with reference_asset_id: a reference keeps its own angle."
+          },
+          "palette_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The id of a palette saved in your library on the website. The sprite is drawn in it, held to it, and remembers it, so animate, restyle and combine keep the same colours."
+          },
+          "reference_asset_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A sprite you own that the new one is redrawn FROM, nearly verbatim: it keeps the reference's subject and camera angle, so it is not a style hint (a different subject comes back as the reference). It cannot be combined with camera_perspective top_down or isometric; a new view of a sprite you own is sprite_restyle with mode \"custom\". Pass its id, no bytes to send. The id comes from sprite_generate or sprite_import. To reference a LOCAL image, call sprite_import on it first, then pass the returned id here."
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "title": "Generate sprite",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "sprite_import",
+      "title": "Import sprite",
+      "description": "Add a sprite you already have (e.g. a local PNG you read off disk) to your account and get back an id you can use ANYWHERE a sprite id is taken: as sprite_generate_animation's source_generation_id (to animate it) OR as sprite_generate's reference_asset_id (to style-match new sprites to it). No need to re-send the bytes afterward. Free: importing spends 0 tokens and runs no AI. The image must be a single pixel sprite (PNG/JPEG/WebP), 16-256px per side, not a sprite sheet. For sprites you generated here, skip this — you already have the id.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "image_base64": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The sprite to add, as raw base64 (no data: prefix needed) or a data:image/...;base64 URL. 16-256px per side."
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Optional label for the sprite. Defaults to \"Imported sprite\"."
+          },
+          "asset_type": {
+            "type": "string",
+            "enum": [
+              "character",
+              "creature",
+              "prop",
+              "weapon",
+              "vehicle",
+              "tile",
+              "background",
+              "ui",
+              "effect"
+            ],
+            "description": "Optional asset-type tag (metadata only)."
+          },
+          "palette_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A palette from the user’s library (sprite_list_palettes). The sprite is stamped with it so animate, restyle and combine hold to it; its pixels are not changed."
+          }
+        },
+        "required": [
+          "image_base64"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "title": "Import sprite",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "sprite_generate_animation",
+      "title": "Generate animation",
+      "description": "Animate a sprite you own into a frame-by-frame spritesheet (walk, run, idle, attack, etc.). Blocking: waits for the animation to finish (~15s) and returns the spritesheet PNG inline — an image you can see plus a download URL to save it, exactly like sprite_generate. If it runs unusually long you get a job_id instead; then poll sprite_get_job with that id until completed. Reference the source by id (source_generation_id) — no bytes to send. Get an id from sprite_generate, sprite_list_creations, or sprite_import (to animate a sprite you already have on disk). Only one animation runs at a time per account, so N animations take about N x 15s in total. Submitting them all at once is fine and is the fastest option: they are accepted immediately and queued server-side, and a queued job reports 0% until its turn comes. Cost scales with frame_count: 8 frames = 14 tokens, up to 20 for 16 frames (Custom prompt adds 2).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source_generation_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id of a still sprite you own — the thing to animate. Get it from sprite_generate, sprite_list_creations, or sprite_import. Must be a still sprite, 16-256px per side, not an existing animation. To animate a local PNG, sprite_import it first and pass the returned id."
+          },
+          "preset": {
+            "type": "string",
+            "enum": [
+              "Idle",
+              "Walk",
+              "Jump",
+              "Run",
+              "Attack",
+              "Hurt",
+              "Death",
+              "Custom"
+            ],
+            "description": "Motion preset, one of: Idle, Walk, Jump, Run, Attack, Hurt, Death, Custom. Use Custom with custom_prompt for free-form motion; it costs the same as a named preset."
+          },
+          "frame_count": {
+            "type": "integer",
+            "minimum": 4,
+            "maximum": 16,
+            "description": "Number of frames, even, 4-16. Default 8 (= 14 tokens). More frames cost more (up to 20 at 16 frames)."
+          },
+          "custom_prompt": {
+            "type": "string",
+            "maxLength": 1500,
+            "description": "Required when preset is Custom: describe the motion. ENGLISH, whatever language the user writes in: the generators read English and draw a French or Spanish prompt worse. Translate the subject; your own words to the user stay in their language."
+          },
+          "palette_extras": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 256,
+            "description": "Cap on NEW colors the animation may add beyond the source palette. 0 keeps the source palette exact. Omit for the preset's tuned default. Raise it (32-64) only when the motion inherently introduces colors the sprite lacks — fire, magic glow, sparks — so the effect is not crushed into the old palette."
+          },
+          "framing_margin": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 25,
+            "description": "Percent the canvas grows by before animating, so the motion has room instead of being cropped at the sprite's edge. 25 for a jump or a projected effect (fire, arrows); omit for in-place motion like walks and idles."
+          },
+          "framing_anchor": {
+            "type": "string",
+            "enum": [
+              "top-left",
+              "top",
+              "top-right",
+              "left",
+              "center",
+              "right",
+              "bottom-left",
+              "bottom",
+              "bottom-right"
+            ],
+            "description": "Where the sprite sits in the grown canvas. \"bottom\" keeps feet grounded under vertical motion (jumps); a bottom corner OPPOSITE the way the sprite faces opens room in front for a projected effect. Default center."
+          }
+        },
+        "required": [
+          "source_generation_id",
+          "preset"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "title": "Generate animation",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "sprite_restyle",
+      "title": "Restyle sprite",
+      "description": "Redraw a sprite you own in a different style while keeping the same character and pose (gold, ice, zombie, or any style you describe). Blocking: waits for the result (~15-90s) and returns the restyled PNG inline — an image you can see plus a download URL to save it, exactly like sprite_generate. If it runs unusually long you get a job_id instead; then poll sprite_get_job with that id until completed. Reference the source by id (source_generation_id) — no bytes to send. Get an id from sprite_generate, sprite_list_creations, or sprite_import. Cost depends on tier: 2 tokens on normal, 9 on pro. Presets and custom prompts cost the same.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source_generation_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id of a sprite you own — the thing to restyle. Get it from sprite_generate, sprite_list_creations, or sprite_import. To restyle a local PNG, sprite_import it first and pass the returned id. The source must be 32-256px per side."
+          },
+          "preset": {
+            "type": "string",
+            "enum": [
+              "fire",
+              "ice",
+              "gold",
+              "zombie",
+              "holy",
+              "cursed",
+              "poison",
+              "royal",
+              "shadow",
+              "steampunk"
+            ],
+            "description": "Locked style preset, one of: fire, ice, gold, zombie, holy, cursed, poison, royal, shadow, steampunk. Provide exactly one of preset or custom_prompt."
+          },
+          "custom_prompt": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "What to change, in your own words. Read together with mode: for restyle \"obsidian armor with glowing red runes\", for pose \"crouching low with knees bent\", for item \"replace the sword with a large battle axe\". Provide exactly one of preset or custom_prompt. WORDS ONLY, and that is usually what you want: describing the change is this tool's job and it is the cheaper one. The single exception is a prompt that points at ANOTHER SPRITE THAT ALREADY EXISTS (\"match that shield, same colours\", \"add the shield from before\") — this tool is shown one image, so it never receives that sprite and can only guess at it. In that one case use sprite_combine and pass the existing sprite as item_generation_id. ENGLISH, whatever language the user writes in: the generators read English and draw a French or Spanish prompt worse. Translate the change; your own words to the user stay in their language."
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "restyle",
+              "pose",
+              "item",
+              "custom"
+            ],
+            "description": "What KIND of change this is. restyle repaints it and may invent colours. pose moves the character and keeps everything else. item swaps one named object and keeps everything else. custom is anything that fits none of those, including a new camera view of the same sprite (isometric, top-down). Defaults to restyle, and a preset always means restyle whatever you send here."
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "pro"
+            ],
+            "description": "Which engine draws it. normal is fast and cheap and wins poses. pro holds the character closer and wins item swaps. Defaults to normal. THIS CHANGES THE PRICE: normal costs 2 tokens, pro costs 9."
+          },
+          "palette_extras": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 256,
+            "description": "Colours this edit may use beyond the sprite's own. OMIT THIS unless you have a specific reason: each mode already defaults to the right amount (restyle 16, pose 0, item 12, custom 12). Never send 0 on a change that introduces a colour the sprite does not have — frost on a red knight with 0 comes back a muddy red knight. Send 0 only to forbid any new colour on purpose."
+          },
+          "framing_margin": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 25,
+            "description": "Percentage the canvas grows by BEFORE the edit, so the change has somewhere to go. SET 15-25 WHENEVER THE NEW POSE REACHES OUTSIDE the character's current outline — arms raised, jumping, a weapon held overhead, a big wind-up. Without it the model draws the reach against the frame edge and it comes back cropped. Pair it with framing_anchor. The output comes back at the grown size. Defaults to 0."
+          },
+          "framing_anchor": {
+            "type": "string",
+            "enum": [
+              "top-left",
+              "top",
+              "top-right",
+              "left",
+              "center",
+              "right",
+              "bottom-left",
+              "bottom",
+              "bottom-right"
+            ],
+            "description": "Where the sprite sits inside that grown canvas. SEND THIS WHENEVER YOU SEND framing_margin. \"bottom\" keeps a character's feet planted and puts the new room above its head, which is what arms raised, a jump or a weapon overhead needs. Defaults to center."
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 32,
+            "maximum": 256,
+            "description": "The finished sprite's size, when it is not the source's. SEND IT ON EVERY STEP A SIZE WAS ASKED FOR: nothing else resizes anything, so a restyle without it comes back at the source's size and reads as the tool ignoring the user (a generate with reference_asset_id does the same, on the reference's own grid). Square, so one number, and for two numbers that differ it is the LONGER of them. A bigger size does not invent detail, it gives the same art bigger pixels; a smaller one simplifies it. Omit it whenever the size is staying, which is nearly always. When the user named two numbers that differ, your reply gives the finished sprite as both of them (\"128x128\"), never as one (\"a 128px version\"), or they go on expecting the width they asked for."
+          }
+        },
+        "required": [
+          "source_generation_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "title": "Restyle sprite",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "sprite_combine",
+      "title": "Combine two sprites",
+      "description": "Put an item from one sprite you own into another sprite you own — \"my knight holding this shield\". The FIRST sprite keeps its identity and its exact dimensions; the SECOND is where the item is copied from, so its shape and colours are what you get. The result keeps both sprites' colours, so an item never comes back repainted in the character's palette. Use this when you HAVE the item as a sprite; use sprite_restyle in item mode to swap for something you only have words for. Blocking: waits for the result (~20s on normal) and returns the PNG inline. Pro runs much longer and usually hands back a job_id instead; then poll sprite_get_job with that id until completed. Reference both sprites by id — no bytes to send. Get ids from sprite_generate, sprite_list_creations, or sprite_import. Cost depends on tier: 3 tokens on normal, 9 on pro.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source_generation_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id of a sprite you own — the one that KEEPS its identity. The result is this sprite, changed, at exactly this sprite's dimensions. Get it from sprite_generate, sprite_list_creations, or sprite_import. Must be 32-256px per side."
+          },
+          "item_generation_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id of a SECOND sprite you own — the thing being put INTO the first one. This is where the item is copied from, so its shape and its colours are what you get; the prompt only says where it goes. To use a local PNG, sprite_import it first and pass the returned id. Must be 32-256px per side, and MUST BE A DIFFERENT SPRITE from source_generation_id — passing the same id twice is refused. THIS TOOL IS ONLY FOR A SPRITE THAT ALREADY EXISTS. Do not make one just to combine it: an item you can only describe belongs in sprite_restyle with mode \"item\", which is cheaper and does not need a second image at all."
+          },
+          "prompt": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "WHERE the item goes, not what it is — the item comes from the image. \"holding this shield in his free hand\", \"wearing this crown on its head\", \"holding this greatsword with both hands\". Naming the character too helps: \"the same knight holding this shield in his free hand\". Do not describe the item's appearance; describing a gold crown when the sprite is a silver one fights the image and you get neither. ENGLISH, whatever language the user writes in: the generators read English and draw a French or Spanish prompt worse. Translate the subject; your own words to the user stay in their language."
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "pro"
+            ],
+            "description": "Which engine draws it. normal is the one that actually combines: measured over five pairs it put the item in the character's hands at a believable scale, and it is the default for that reason. pro holds the character almost pixel-identically but places the item worse, usually too large and behind the body — reach for it only when keeping the character exact matters more than where the item lands. THIS CHANGES THE PRICE: normal costs 3 tokens, pro costs 9."
+          },
+          "palette_extras": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 256,
+            "description": "Colours this combine may use beyond the two sprites' own. OMIT THIS. Unlike a restyle, a combine already has both palettes to draw from, so the default of 4 only covers the shading where the two meet. Send 0 to forbid any colour neither sprite already has."
+          },
+          "framing_margin": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 25,
+            "description": "Percentage the canvas grows by BEFORE the edit, so the item has somewhere to go. SET 15-25 WHEN THE ITEM REACHES OUTSIDE the character's current outline — a raised weapon, a shield held out, anything two-handed and long. Without it the item is drawn against the frame edge and comes back cropped. Pair it with framing_anchor. Unlike restyle, the sprite still comes back at the FIRST sprite's size; the room is for the model, not a resize. Defaults to 0."
+          },
+          "framing_anchor": {
+            "type": "string",
+            "enum": [
+              "top-left",
+              "top",
+              "top-right",
+              "left",
+              "center",
+              "right",
+              "bottom-left",
+              "bottom",
+              "bottom-right"
+            ],
+            "description": "Where the sprite sits inside that grown canvas. SEND THIS WHENEVER YOU SEND framing_margin. \"bottom\" keeps a character's feet planted and puts the new room above its head, which is what a raised weapon needs. Defaults to center."
+          }
+        },
+        "required": [
+          "source_generation_id",
+          "item_generation_id",
+          "prompt"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "title": "Combine two sprites",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "sprite_normal_map",
+      "title": "Generate normal map",
+      "description": "Generate a tangent-space normal map for a sprite or animation you own, for dynamic lighting in a game engine. AI trained on real 3D geometry (not an edge-detect filter): the output encodes the subject’s actual form, and its alpha is a pixel-exact copy of the source silhouette. Animations are processed per frame automatically (deterministic, no flicker) and come back as the same-layout strip. Output is OpenGL/+Y-up; set flip_green for DirectX engines like Unreal. Synchronous — returns the finished PNG inline in a few seconds. Source frames must be 32-256px per side. Cost: 1 token per frame (a still sprite = 1 token).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source_generation_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id of a sprite OR animation you own. Get it from sprite_generate, sprite_generate_animation, sprite_list_creations, or sprite_import. To normal-map a local PNG, sprite_import it first and pass the returned id."
+          },
+          "strength": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 5,
+            "description": "Detail injection, 0-5, default 0. 0 is the most faithful to the true geometry. Higher values re-add the sprite’s drawn shading as extra high-frequency normal detail — a hand-crafted look at a small cost in geometric accuracy. Try 2.5 if the result feels too smooth when lit."
+          },
+          "flip_green": {
+            "type": "boolean",
+            "description": "Flip the green channel for DirectX / +Y-down engines (Unreal). Default false = OpenGL / +Y-up (Godot, Unity, WebGL)."
+          },
+          "columns": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 24,
+            "description": "Only for a STILL that is actually a sprite sheet: its column count, so each frame is processed independently. Ignored for animation sources (their layout is known). columns x rows must be <= 24."
+          },
+          "rows": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 24,
+            "description": "Sheet row count, with columns. Default 1."
+          }
+        },
+        "required": [
+          "source_generation_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "title": "Generate normal map",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "sprite_rotate",
+      "title": "Rotate sprite (8 directions)",
+      "description": "Turn one sprite you own into a full 8-direction set: S, SE, E, NE, N, NW, W, SW — same character, same palette, game-ready. Returns a horizontal strip of 8 equal frames in that spin order; slice it into frames for a top-down or isometric character controller. Includes an objective fidelity score (the sheet is calibrated against the source; low-scoring generations are re-rolled automatically). Synchronous — the finished strip returns inline in ~1-2 minutes. Source must be a STILL sprite, 32-256px per side. Cost: 12 tokens.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source_generation_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id of a still sprite you own. Get it from sprite_generate, sprite_list_creations, or sprite_import. To rotate a local PNG, sprite_import it first and pass the returned id."
+          }
+        },
+        "required": [
+          "source_generation_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "title": "Rotate sprite (8 directions)",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "sprite_remove_background",
+      "title": "Remove background",
+      "description": "Remove a flat, single-color background from a sprite or animation you own and get back a transparent PNG, saved as a NEW sprite id you can animate, restyle, combine or normal-map like any other. Two methods: \"standard\" (free, chroma key: removes pixels close to the background color and cleans the color fringe) and \"refined\" (1 token, palette matting: solves every edge pixel against the sprite’s own palette, the cleanest result on AI-generated pixel art). The background color is sampled from the corners unless matte_color is given. Synchronous, under a second. Sprites generated here already come with transparent backgrounds, so this is for imported screenshots and renders on a flat color; a source whose corners are already transparent is refused.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source_generation_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id of a sprite OR animation you own that sits on a flat, single-color background. Typically a screenshot or render the user has: sprite_import it first and pass the returned id. Sprites generated here already have transparent backgrounds and are refused."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "refined"
+            ],
+            "description": "\"standard\" (default, FREE): chroma key, removes pixels close to the background color and cleans the color fringe. \"refined\" (1 token): palette matting, solves every edge pixel against the sprite’s own colors, the cleanest edges on AI-generated pixel art."
+          },
+          "matte_color": {
+            "type": "string",
+            "pattern": "^#?[0-9a-fA-F]{6}$",
+            "description": "The background color to remove, as #rrggbb. Omit to sample the four corners of the image, which is right whenever the background is flat."
+          },
+          "tolerance": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 300,
+            "description": "standard only. How far from the background color a pixel may be and still be removed, 0-300, default 200. Raise it if fringe remains, lower it if the sprite loses colors close to the background."
+          },
+          "palette_size": {
+            "type": "integer",
+            "minimum": 16,
+            "maximum": 256,
+            "description": "refined only. Cap on the sprite colors used for matting, 16-256, default 64. Raise it for sources with many distinct colors."
+          },
+          "alpha_threshold": {
+            "type": "number",
+            "minimum": 0.3,
+            "maximum": 0.9,
+            "description": "refined only. Coverage above which an edge pixel stays opaque, 0.3-0.9, default 0.7. Lower keeps more of the anti-aliased edge, higher trims it."
+          }
+        },
+        "required": [
+          "source_generation_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "title": "Remove background",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "sprite_get_job",
+      "title": "Check job",
+      "description": "Poll an async job (animation, restyle or combine) by its job_id. While running, returns status \"processing\" with optional progress — keep polling every few seconds. An animation runs ~15s, but only one runs at a time per account, so a queued job stays at 0% until the one ahead of it lands. A combine on pro runs ~3-4 minutes. When done, returns the finished PNG (image + base64 to save).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "description": "The job_id returned by sprite_generate_animation, sprite_restyle or sprite_combine."
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "title": "Check job",
+        "readOnlyHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "sprite_list_creations",
+      "title": "List creations",
+      "description": "List the user's past sprites and animations (newest first), as metadata (no image bytes). Use to find a previous generation id. Paginated.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "How many to return, 1-100. Default 20."
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many to skip, for paging. Default 0."
+          },
+          "asset_type": {
+            "type": "string",
+            "enum": [
+              "character",
+              "creature",
+              "prop",
+              "weapon",
+              "vehicle",
+              "tile",
+              "background",
+              "ui",
+              "effect"
+            ],
+            "description": "Filter by asset type."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "failed",
+              "generating"
+            ],
+            "description": "Filter by status."
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "title": "List creations",
+        "readOnlyHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "sprite_get_balance",
+      "title": "Get token balance",
+      "description": "Check the current token balance and plan. Useful before generating to confirm there are enough tokens (a sprite costs 1, an animation 14-20).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "title": "Get token balance",
+        "readOnlyHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "sprite_list_asset_types",
+      "title": "List asset types",
+      "description": "List the supported sprite asset types with their token cost and recommended pixel size range. Use to pick asset_type for sprite_generate.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "title": "List asset types",
+        "readOnlyHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "sprite_capabilities",
+      "title": "Read capabilities",
+      "description": "Read the full Sprite-AI capability reference in one call: what each of the six asset-producing tools makes, which outputs may be chained into which inputs, the still-vs-sheet rule, every enum value, the pixel-size bands, token costs, expected latency and worked examples. Free, no tokens, no generation. Call it BEFORE planning any multi-step sequence so the sizes and chaining rules are known up front. Most failed sequences are a sprite generated too large to animate, or a sheet fed to a tool that needs a still, both of which this text rules out in advance.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "title": "Read capabilities",
+        "readOnlyHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "sprite_generate_palette",
+      "title": "Generate palette options",
+      "description": "Propose a few colour palettes for a description, e.g. \"mossy dungeon, 16 colours\". Nothing is saved. Show the options to the user (the image has them in order, top to bottom) and let them pick one or ask for another roll. Then call sprite_save_palette with the chosen option’s recipe, exactly as returned. Without a count the options come in four sizes, 8 to 32; on a re-roll keep the count the user last chose. Free.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 200,
+            "description": "What the palette is for, e.g. 'mossy dungeon, 16 colours' or 'warm desert town'. Read into a theme, a main colour and moods; a number in the text sets the count. ENGLISH, whatever language the user writes in: the generators read English and draw a French or Spanish prompt worse. Translate the subject; your own words to the user stay in their language."
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 4,
+            "maximum": 64,
+            "description": "Colours per option, 4-64. Default: the number in the prompt. With no number anywhere, the options come one per size, 8, 16, 24 and 32, so the pick sets the size."
+          },
+          "options": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 4,
+            "description": "How many options to propose, 2-4. Default 4."
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "title": "Generate palette options",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "sprite_save_palette",
+      "title": "Save palette",
+      "description": "Save the palette the user picked, from the recipe sprite_generate_palette returned, or from explicit colours. Returns its id; pass it as palette_id to sprite_generate so the sprite is drawn in it and every later tool keeps it. Free.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "A short name the user will recognise."
+          },
+          "recipe": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": 4,
+                "maximum": 64
+              },
+              "seed": {
+                "type": "integer"
+              },
+              "theme": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "primary": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "moods": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 32
+                },
+                "maxItems": 4
+              },
+              "hueShift": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "focus": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "tight"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "anchors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "hue": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 360
+                        },
+                        {
+                          "type": "array",
+                          "minItems": 2,
+                          "maxItems": 2,
+                          "items": [
+                            {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 360
+                            },
+                            {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 360
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "hex": {
+                      "type": "string",
+                      "pattern": "^#[0-9a-fA-F]{6}$"
+                    },
+                    "neutral": {
+                      "type": "string",
+                      "enum": [
+                        "black",
+                        "grey",
+                        "white"
+                      ]
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "main",
+                        "support",
+                        "accent"
+                      ]
+                    },
+                    "value": {
+                      "type": "string",
+                      "enum": [
+                        "dark",
+                        "light",
+                        "vivid",
+                        "muted",
+                        "deep"
+                      ]
+                    },
+                    "weight": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "maximum": 10
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "maxItems": 12
+              },
+              "anchorsOnly": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "count",
+              "seed"
+            ],
+            "additionalProperties": false,
+            "description": "The recipe of the chosen option, exactly as sprite_generate_palette returned it."
+          },
+          "colors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "minItems": 2,
+            "maxItems": 256,
+            "description": "Explicit #rrggbb colours instead of a recipe, 2-256. Pass one of recipe or colors."
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "title": "Save palette",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "sprite_list_palettes",
+      "title": "List palettes",
+      "description": "List the user's saved palettes, newest first, with their colours. Use to find a palette_id for sprite_generate or sprite_import. Free.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "How many to return, 1-100. Default 20."
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/draft-07/schema#"
+      },
+      "annotations": {
+        "title": "List palettes",
+        "readOnlyHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      }
+    }
+  ]
+}

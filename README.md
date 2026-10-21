@@ -1,6 +1,6 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./assets/banner-dark.svg">
-  <img alt="Sprite AI MCP, MCP server for AI editors" src="./assets/banner-light.svg" width="100%">
+  <img alt="Sprite AI MCP, MCP server for AI agents" src="./assets/banner-light.svg" width="100%">
 </picture>
 
 # Sprite AI MCP server

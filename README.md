@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/banner-dark.svg">
+  <img alt="Sprite AI MCP, MCP server for AI editors" src="./assets/banner-light.svg" width="100%">
+</picture>
+
 # Sprite AI MCP server
 
 Generate, animate, rotate and restyle pixel art game sprites from Claude Code, Cursor, Codex or any MCP client.
@@ -157,7 +162,7 @@ The server is hosted by Sprite AI. This repo holds its public listing files.
 - `lhm.plugin.json` is the [LobeHub](https://lobehub.com/mcp) listing.
 - `sync-tools.mjs` copies the tool list from the live server card into `lhm.plugin.json` (Node 22+).
 
-Questions and bug reports go to [Discord](https://discord.gg/fpQ7fdVGSN) or [GitHub issues](https://github.com/sprite-ai-art/sprite-ai-mcp/issues).
+Questions and bug reports go to [Discord](https://discord.gg/fpQ7fdVGSN) or [GitHub issues](https://github.com/sprite-ai-studio/sprite-ai-mcp/issues).
 
 ## License
 
